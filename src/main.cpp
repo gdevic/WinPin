@@ -4,9 +4,11 @@
 #include "winevents.h"
 #include "tray.h"
 #include "vdesk.h"
+#include "settings.h"
 #include "resource.h"
 #include <objbase.h>
 #include <shellapi.h>
+#include <commctrl.h>
 
 static const WCHAR kOwnerClass[] = L"WinPinOwnerWnd_v1";
 
@@ -94,6 +96,10 @@ int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, PWSTR cmdLine, int nShow
     /* ---------- COM (tray + IVirtualDesktopManager) ---------- */
     HRESULT coHr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
+    /* Register the comctl6 hotkey class so the Settings dialog can use it. */
+    INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_HOTKEY_CLASS | ICC_STANDARD_CLASSES };
+    InitCommonControlsEx(&icc);
+
     /* ---------- subsystems ---------- */
     HWND owner = register_and_create_owner(hInst);
     if (!owner) {
@@ -112,11 +118,12 @@ int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, PWSTR cmdLine, int nShow
                     MB_OK | MB_ICONERROR);
     }
 
-    if (!RegisterHotKey(owner, HOTKEY_ID_TOGGLE, HOTKEY_MOD, HOTKEY_VK)) {
+    if (!settings::hotkey_register(owner, HOTKEY_ID_TOGGLE)) {
         MessageBoxW(owner,
-            L"Could not register the global hotkey Alt+F2 "
+            L"Could not register the configured global hotkey "
             L"(another app may already own it).\r\n\r\n"
-            L"WinPin will keep running; pin via the tray icon menu.",
+            L"WinPin will keep running; open Settings to pick a different "
+            L"key, or pin via the tray icon menu.",
             L"WinPin", MB_OK | MB_ICONWARNING);
     }
 

@@ -8,10 +8,9 @@
 /* Maximum number of simultaneously pinned windows. */
 #define MAX_PINS 32
 
-/* Hotkey: Alt+F2 toggles pin on the focused window. */
+/* Global toggle-pin hotkey ID. The actual key is user-configurable —
+   defaults to Alt+F2; see settings::kDefault* and settings::hotkey_*. */
 #define HOTKEY_ID_TOGGLE 1
-#define HOTKEY_MOD       (MOD_ALT | MOD_NOREPEAT)
-#define HOTKEY_VK        VK_F2
 
 /* Custom messages on the hidden owner window. */
 #define WM_APP_TRAY      (WM_APP + 1)   /* tray icon callback */

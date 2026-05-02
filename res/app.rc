@@ -6,14 +6,17 @@
    shown by Windows Explorer. */
 IDI_APP ICON "app.ico"
 
-IDD_SETTINGS DIALOGEX 0, 0, 200, 70
+IDD_SETTINGS DIALOGEX 0, 0, 220, 100
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "WinPin Settings"
 FONT 9, "Segoe UI", 400, 0, 1
 BEGIN
-    AUTOCHECKBOX  "Start with &Windows", IDC_CHK_AUTOSTART,  10, 14, 180, 12
-    DEFPUSHBUTTON "OK",                  IDOK,               90, 48,  50, 14
-    PUSHBUTTON    "Cancel",              IDCANCEL,          145, 48,  50, 14
+    LTEXT         "&Hotkey to toggle pin on focused window:", -1, 10,  10, 200, 10
+    CONTROL       "", IDC_HOTKEY, "msctls_hotkey32",
+                  WS_TABSTOP | WS_BORDER,                          10,  24, 200, 14
+    AUTOCHECKBOX  "Start with &Windows",        IDC_CHK_AUTOSTART, 10,  52, 200, 12
+    DEFPUSHBUTTON "OK",                         IDOK,             110,  78,  50, 14
+    PUSHBUTTON    "Cancel",                     IDCANCEL,         165,  78,  50, 14
 END
 
 VS_VERSION_INFO VERSIONINFO

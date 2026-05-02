@@ -12,6 +12,47 @@ static HWND      g_owner;
 static HINSTANCE g_inst;
 
 // ---------------------------------------------------------------------------
+// Hotkey <-> hotkey-control encoding
+// ---------------------------------------------------------------------------
+//
+// The msctls_hotkey32 control packs (vk, modifier-flags) as a WORD:
+//   LOBYTE = virtual-key, HIBYTE = HOTKEYF_* bitmask.
+// MOD_* (RegisterHotKey) and HOTKEYF_* (the control) are different bit
+// values, so we convert.
+
+static UINT hkf_to_mod(UINT hkf)
+{
+    UINT m = 0;
+    if (hkf & HOTKEYF_ALT)     m |= MOD_ALT;
+    if (hkf & HOTKEYF_CONTROL) m |= MOD_CONTROL;
+    if (hkf & HOTKEYF_SHIFT)   m |= MOD_SHIFT;
+    return m;
+}
+
+static UINT mod_to_hkf(UINT mod)
+{
+    UINT h = 0;
+    if (mod & MOD_ALT)     h |= HOTKEYF_ALT;
+    if (mod & MOD_CONTROL) h |= HOTKEYF_CONTROL;
+    if (mod & MOD_SHIFT)   h |= HOTKEYF_SHIFT;
+    return h;
+}
+
+static void format_hotkey_text(WCHAR* dst, size_t cch, UINT mod, UINT vk)
+{
+    dst[0] = 0;
+    if (mod & MOD_CONTROL) lstrcatW(dst, L"Ctrl+");
+    if (mod & MOD_ALT)     lstrcatW(dst, L"Alt+");
+    if (mod & MOD_SHIFT)   lstrcatW(dst, L"Shift+");
+    if (mod & MOD_WIN)     lstrcatW(dst, L"Win+");
+    WCHAR name[32] = {};
+    LONG  lparam = (MapVirtualKeyW(vk, MAPVK_VK_TO_VSC) << 16);
+    if (GetKeyNameTextW(lparam, name, ARRAYSIZE(name)) <= 0)
+        wsprintfW(name, L"VK_%02X", vk);
+    lstrcpynW(dst + lstrlenW(dst), name, int(cch - lstrlenW(dst)));
+}
+
+// ---------------------------------------------------------------------------
 // About box
 // ---------------------------------------------------------------------------
 
@@ -25,6 +66,20 @@ static HRESULT CALLBACK about_callback(HWND, UINT msg, WPARAM, LPARAM lp, LONG_P
 
 static void show_about(HWND owner)
 {
+    WCHAR hk[96] = {};
+    format_hotkey_text(hk, ARRAYSIZE(hk),
+                       settings::hotkey_mod_get(),
+                       settings::hotkey_vk_get());
+    WCHAR content[512] = {};
+    wsprintfW(content,
+        L"Pin any window on top of all others.\n\n"
+        L"Hotkey:  %s  (toggles the focused window)\n"
+        L"Right-click the tray icon for the pin list.\n\n"
+        WIDEN(APP_COPYRIGHT) L"\n\n"
+        L"<a href=\"" WIDEN(APP_RELEASES_URL) L"\">"
+        L"Check for new releases on GitHub</a>",
+        hk);
+
     TASKDIALOGCONFIG c = {};
     c.cbSize             = sizeof(c);
     c.hwndParent         = owner;
@@ -32,13 +87,7 @@ static void show_about(HWND owner)
     c.dwCommonButtons    = TDCBF_OK_BUTTON;
     c.pszWindowTitle     = L"About " WIDEN(APP_NAME);
     c.pszMainInstruction = WIDEN(APP_NAME) L"  " WIDEN(APP_VERSION_STR);
-    c.pszContent         =
-        L"Pin any window on top of all others.\n\n"
-        L"Hotkey:  Alt+F2  (toggles the focused window)\n"
-        L"Right-click the tray icon for the pin list.\n\n"
-        WIDEN(APP_COPYRIGHT) L"\n\n"
-        L"<a href=\"" WIDEN(APP_RELEASES_URL) L"\">"
-        L"Check for new releases on GitHub</a>";
+    c.pszContent         = content;
     c.pszMainIcon        = TD_INFORMATION_ICON;
     c.pfCallback         = about_callback;
     TaskDialogIndirect(&c, NULL, NULL, NULL);
@@ -51,16 +100,46 @@ static void show_about(HWND owner)
 static INT_PTR CALLBACK settings_proc(HWND dlg, UINT msg, WPARAM wp, LPARAM)
 {
     switch (msg) {
-    case WM_INITDIALOG:
+    case WM_INITDIALOG: {
         CheckDlgButton(dlg, IDC_CHK_AUTOSTART,
                        (settings::autostart_get()) ? BST_CHECKED : BST_UNCHECKED);
+        UINT const mod = settings::hotkey_mod_get();
+        UINT const vk  = settings::hotkey_vk_get();
+        WORD const packed = WORD((mod_to_hkf(mod) << 8) | (vk & 0xFF));
+        SendDlgItemMessageW(dlg, IDC_HOTKEY, HKM_SETHOTKEY, packed, 0);
         return TRUE;
+    }
 
     case WM_COMMAND:
         switch (LOWORD(wp)) {
         case IDOK: {
-            bool const want = (IsDlgButtonChecked(dlg, IDC_CHK_AUTOSTART) == BST_CHECKED);
-            settings::autostart_set(want);
+            // Hotkey
+            WORD const packed = WORD(SendDlgItemMessageW(dlg, IDC_HOTKEY, HKM_GETHOTKEY, 0, 0));
+            UINT const vk     = LOBYTE(packed);
+            UINT const hkf    = HIBYTE(packed);
+            UINT const mod    = hkf_to_mod(hkf);
+            if (vk == 0) {
+                MessageBoxW(dlg, L"Please choose a hotkey first.",
+                            L"WinPin Settings", MB_OK | MB_ICONWARNING);
+                return TRUE;
+            }
+            // Try the new hotkey before persisting it. If it conflicts (or
+            // is otherwise invalid), restore the previous registration.
+            UnregisterHotKey(g_owner, HOTKEY_ID_TOGGLE);
+            if (!RegisterHotKey(g_owner, HOTKEY_ID_TOGGLE, mod | MOD_NOREPEAT, vk)) {
+                settings::hotkey_register(g_owner, HOTKEY_ID_TOGGLE);
+                MessageBoxW(dlg,
+                    L"That hotkey is already in use by another application "
+                    L"or is invalid. Please pick a different one.",
+                    L"WinPin Settings", MB_OK | MB_ICONWARNING);
+                return TRUE;
+            }
+            settings::hotkey_set(mod, vk);
+
+            // Autostart
+            settings::autostart_set(IsDlgButtonChecked(dlg, IDC_CHK_AUTOSTART) == BST_CHECKED);
+
+            tray_update_tip();
             EndDialog(dlg, IDOK);
             return TRUE;
         }
@@ -86,6 +165,16 @@ void tray_show_settings(HWND owner)
 // Tray icon
 // ---------------------------------------------------------------------------
 
+static void build_tip(WCHAR* dst, size_t cch)
+{
+    WCHAR hk[96] = {};
+    format_hotkey_text(hk, ARRAYSIZE(hk),
+                       settings::hotkey_mod_get(),
+                       settings::hotkey_vk_get());
+    wsprintfW(dst, L"WinPin  -  %s to pin focused window", hk);
+    dst[cch - 1] = 0;
+}
+
 BOOL tray_init(HWND owner, HINSTANCE hInst)
 {
     g_owner = owner;
@@ -106,14 +195,25 @@ BOOL tray_init(HWND owner, HINSTANCE hInst)
     nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_APP_TRAY;
     nid.hIcon            = hIcon;
-    lstrcpynW(nid.szTip, L"WinPin  -  Alt+F2 to pin focused window",
-              (int)(sizeof nid.szTip / sizeof nid.szTip[0]));
+    build_tip(nid.szTip, sizeof nid.szTip / sizeof nid.szTip[0]);
 
     if (!Shell_NotifyIconW(NIM_ADD, &nid)) return FALSE;
 
     nid.uVersion = NOTIFYICON_VERSION_4;
     Shell_NotifyIconW(NIM_SETVERSION, &nid);
     return TRUE;
+}
+
+void tray_update_tip(void)
+{
+    if (!g_owner) return;
+    NOTIFYICONDATAW nid = {0};
+    nid.cbSize = sizeof nid;
+    nid.hWnd   = g_owner;
+    nid.uID    = TRAY_UID;
+    nid.uFlags = NIF_TIP;
+    build_tip(nid.szTip, sizeof nid.szTip / sizeof nid.szTip[0]);
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
 void tray_shutdown(void)

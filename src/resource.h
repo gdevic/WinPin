@@ -14,6 +14,7 @@
 
 /* Dialog control IDs */
 #define IDC_CHK_AUTOSTART 1001
+#define IDC_HOTKEY        1002
 
 /* Dynamic per-pin command IDs (one per slot up to MAX_PINS) */
 #define IDM_PIN_FIRST     41000
