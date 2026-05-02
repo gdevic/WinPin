@@ -75,7 +75,8 @@ static void show_about(HWND owner)
         L"Pin any window on top of all others.\n\n"
         L"Hotkey:  %s  (toggles the focused window)\n"
         L"Right-click the tray icon for the pin list.\n\n"
-        WIDEN(APP_COPYRIGHT) L"\n\n"
+        WIDEN(APP_COPYRIGHT) L"\n"
+        WIDEN(APP_LICENSE)   L"\n\n"
         L"<a href=\"" WIDEN(APP_RELEASES_URL) L"\">"
         L"Check for new releases on GitHub</a>",
         hk);
