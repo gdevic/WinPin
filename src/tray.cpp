@@ -1,11 +1,19 @@
 #include "tray.h"
 #include "pins.h"
 #include "resource.h"
+#include "settings.h"
 #include "version.h"
 #include <shellapi.h>
 #include <commctrl.h>
 
 #define TRAY_UID 1
+
+static HWND      g_owner;
+static HINSTANCE g_inst;
+
+// ---------------------------------------------------------------------------
+// About box
+// ---------------------------------------------------------------------------
 
 static HRESULT CALLBACK about_callback(HWND, UINT msg, WPARAM, LPARAM lp, LONG_PTR)
 {
@@ -36,11 +44,52 @@ static void show_about(HWND owner)
     TaskDialogIndirect(&c, NULL, NULL, NULL);
 }
 
-static HWND g_owner;
+// ---------------------------------------------------------------------------
+// Settings dialog
+// ---------------------------------------------------------------------------
+
+static INT_PTR CALLBACK settings_proc(HWND dlg, UINT msg, WPARAM wp, LPARAM)
+{
+    switch (msg) {
+    case WM_INITDIALOG:
+        CheckDlgButton(dlg, IDC_CHK_AUTOSTART,
+                       (settings::autostart_get()) ? BST_CHECKED : BST_UNCHECKED);
+        return TRUE;
+
+    case WM_COMMAND:
+        switch (LOWORD(wp)) {
+        case IDOK: {
+            bool const want = (IsDlgButtonChecked(dlg, IDC_CHK_AUTOSTART) == BST_CHECKED);
+            settings::autostart_set(want);
+            EndDialog(dlg, IDOK);
+            return TRUE;
+        }
+        case IDCANCEL:
+            EndDialog(dlg, IDCANCEL);
+            return TRUE;
+        }
+        break;
+
+    case WM_CLOSE:
+        EndDialog(dlg, IDCANCEL);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+void tray_show_settings(HWND owner)
+{
+    DialogBoxParamW(g_inst, MAKEINTRESOURCEW(IDD_SETTINGS), owner, settings_proc, 0);
+}
+
+// ---------------------------------------------------------------------------
+// Tray icon
+// ---------------------------------------------------------------------------
 
 BOOL tray_init(HWND owner, HINSTANCE hInst)
 {
     g_owner = owner;
+    g_inst  = hInst;
 
     /* Pick the small-icon variant from our multi-size .ico for crisp tray
        rendering at the user's current DPI. */
@@ -101,8 +150,12 @@ void tray_show_menu(HWND owner)
         AppendMenuW(menu, MF_STRING, IDM_UNPIN_ALL, L"Unpin all");
     }
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
-    AppendMenuW(menu, MF_STRING, IDM_ABOUT, L"About WinPin");
-    AppendMenuW(menu, MF_STRING, IDM_EXIT,  L"Exit");
+    AppendMenuW(menu, MF_STRING, IDM_SETTINGS, L"&Settings...");
+    AppendMenuW(menu, MF_STRING, IDM_ABOUT,    L"&About...");
+    AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
+    AppendMenuW(menu, MF_STRING, IDM_EXIT,     L"E&xit");
+
+    SetMenuDefaultItem(menu, IDM_SETTINGS, FALSE);
 
     POINT pt;
     GetCursorPos(&pt);
@@ -126,6 +179,9 @@ void tray_handle_command(HWND owner, WORD id)
     switch (id) {
     case IDM_UNPIN_ALL:
         pins_unpin_all();
+        break;
+    case IDM_SETTINGS:
+        tray_show_settings(owner);
         break;
     case IDM_ABOUT:
         show_about(owner);

@@ -15,7 +15,7 @@ set "RES_DIR=res"
 set "RC_FILE=%RES_DIR%\app.rc"
 set "MANIFEST=%RES_DIR%\app.manifest"
 set "SOURCES=%SRC_DIR%\main.cpp %SRC_DIR%\pins.cpp %SRC_DIR%\overlay.cpp %SRC_DIR%\winevents.cpp %SRC_DIR%\tray.cpp %SRC_DIR%\vdesk.cpp"
-set "LIBS=user32.lib gdi32.lib shell32.lib dwmapi.lib ole32.lib uuid.lib comctl32.lib"
+set "LIBS=user32.lib gdi32.lib advapi32.lib shell32.lib dwmapi.lib ole32.lib uuid.lib comctl32.lib"
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" (

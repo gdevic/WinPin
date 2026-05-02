@@ -29,9 +29,10 @@ static LRESULT CALLBACK owner_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         switch (event) {
         case WM_CONTEXTMENU:
         case WM_RBUTTONUP:
-        case NIN_SELECT:
-        case WM_LBUTTONDBLCLK:
             tray_show_menu(hwnd);
+            break;
+        case WM_LBUTTONDBLCLK:
+            tray_show_settings(hwnd);
             break;
         }
         return 0;
