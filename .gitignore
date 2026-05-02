@@ -1,0 +1,23 @@
+# Build output
+/build/
+/out/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# Compiled binaries / link artifacts
+*.exe
+*.obj
+*.o
+*.lib
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.res
+
+# Icon-generation preview artifacts
+res/app_preview_*.png
