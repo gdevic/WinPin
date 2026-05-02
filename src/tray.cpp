@@ -1,9 +1,40 @@
 #include "tray.h"
 #include "pins.h"
 #include "resource.h"
+#include "version.h"
 #include <shellapi.h>
+#include <commctrl.h>
 
 #define TRAY_UID 1
+
+static HRESULT CALLBACK about_callback(HWND, UINT msg, WPARAM, LPARAM lp, LONG_PTR)
+{
+    if (msg == TDN_HYPERLINK_CLICKED)
+        ShellExecuteW(NULL, L"open", reinterpret_cast<LPCWSTR>(lp),
+                      NULL, NULL, SW_SHOWNORMAL);
+    return S_OK;
+}
+
+static void show_about(HWND owner)
+{
+    TASKDIALOGCONFIG c = {};
+    c.cbSize             = sizeof(c);
+    c.hwndParent         = owner;
+    c.dwFlags            = TDF_ENABLE_HYPERLINKS | TDF_ALLOW_DIALOG_CANCELLATION;
+    c.dwCommonButtons    = TDCBF_OK_BUTTON;
+    c.pszWindowTitle     = L"About " WIDEN(APP_NAME);
+    c.pszMainInstruction = WIDEN(APP_NAME) L"  " WIDEN(APP_VERSION_STR);
+    c.pszContent         =
+        L"Pin any window on top of all others.\n\n"
+        L"Hotkey:  Alt+F2  (toggles the focused window)\n"
+        L"Right-click the tray icon for the pin list.\n\n"
+        WIDEN(APP_COPYRIGHT) L"\n\n"
+        L"<a href=\"" WIDEN(APP_RELEASES_URL) L"\">"
+        L"Check for new releases on GitHub</a>";
+    c.pszMainIcon        = TD_INFORMATION_ICON;
+    c.pfCallback         = about_callback;
+    TaskDialogIndirect(&c, NULL, NULL, NULL);
+}
 
 static HWND g_owner;
 
@@ -97,12 +128,7 @@ void tray_handle_command(HWND owner, WORD id)
         pins_unpin_all();
         break;
     case IDM_ABOUT:
-        MessageBoxW(owner,
-            L"WinPin\r\n\r\n"
-            L"Pin any window on top of all others.\r\n\r\n"
-            L"Hotkey:  Alt+F2  (toggles the focused window)\r\n"
-            L"Right-click the tray icon for the pin list.",
-            L"About WinPin", MB_OK | MB_ICONINFORMATION);
+        show_about(owner);
         break;
     case IDM_EXIT:
         PostMessageW(owner, WM_CLOSE, 0, 0);

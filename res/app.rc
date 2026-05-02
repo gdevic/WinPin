@@ -1,13 +1,14 @@
 #include <winres.h>
 #include "resource.h"
+#include "version.h"
 
 /* Application icon. Lowest icon-resource ID becomes the .exe file icon
    shown by Windows Explorer. */
 IDI_APP ICON "app.ico"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION    1,0,0,0
- PRODUCTVERSION 1,0,0,0
+ FILEVERSION    APP_VERSION_MAJOR,APP_VERSION_MINOR,APP_VERSION_BUILD,0
+ PRODUCTVERSION APP_VERSION_MAJOR,APP_VERSION_MINOR,APP_VERSION_BUILD,0
  FILEFLAGSMASK  0x3fL
  FILEFLAGS      0x0L
  FILEOS         VOS__WINDOWS32
@@ -20,11 +21,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Baltazar Studios, LLC"
             VALUE "FileDescription",  "WinPin - always-on-top window utility"
-            VALUE "FileVersion",      "1.0.0.0"
-            VALUE "InternalName",     "WinPin"
+            VALUE "FileVersion",      APP_VERSION_STR4
+            VALUE "InternalName",     APP_NAME
             VALUE "OriginalFilename", "WinPin.exe"
-            VALUE "ProductName",      "WinPin"
-            VALUE "ProductVersion",   "1.0.0.0"
+            VALUE "ProductName",      APP_NAME
+            VALUE "ProductVersion",   APP_VERSION_STR4
+            VALUE "LegalCopyright",   APP_COPYRIGHT
         END
     END
     BLOCK "VarFileInfo"
