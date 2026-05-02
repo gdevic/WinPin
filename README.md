@@ -7,7 +7,8 @@ no .NET. Single static-CRT binary, no installer, no admin required.
 
 ## Behavior
 
-* **Hotkey** `Alt + F2` — toggles pin on the currently focused top-level window.
+* **Hotkey** — toggles pin on the currently focused top-level window. Default
+  is `Alt + F2`; configurable in **Settings** (any modifier + key combo).
 * **Border overlay** — a 3-px orange frame is drawn around each pinned window,
   rounded on Windows 11 to match the OS frame.
 * **Auto-hide** — the border hides while the target is minimized or on a
@@ -25,10 +26,11 @@ A tray icon appears. Right-click for the menu:
 
 * The list of currently pinned windows (click any entry to unpin it)
 * **Unpin all**
+* **Settings...** — pick a hotkey, toggle Start with Windows
 * **About** / **Exit**
 
-Launching `WinPin.exe` while it is already running re-opens the tray menu of
-the existing instance.
+Double-click the tray icon to open Settings. Launching `WinPin.exe` while it
+is already running re-opens the tray menu of the existing instance.
 
 ## Build
 
@@ -53,11 +55,11 @@ go to `build\`.
 
 ## Customizing
 
-The handful of knobs are in `src\winpin.h`:
-
-* `HOTKEY_MOD` / `HOTKEY_VK` — change the global hotkey.
-* `BORDER_COLOR` / `BORDER_THICKNESS_PX` — change the highlight border.
-* `MAX_PINS` — raise the cap on simultaneously pinned windows.
+* **Hotkey** — pick any modifier + key in the Settings dialog. Persisted in
+  `HKCU\SOFTWARE\Baltazar Studios, LLC\WinPin` as `HotkeyMod` / `HotkeyVk`
+  DWORDs.
+* **Border / pin cap** — compile-time knobs in `src\winpin.h`
+  (`BORDER_COLOR`, `BORDER_THICKNESS_PX`, `MAX_PINS`).
 
 ## Layout
 
@@ -66,7 +68,8 @@ src\main.cpp          WinMain, message loop, hotkey, single-instance, glue
 src\pins.cpp/.h       Pin table (pin / unpin / toggle)
 src\overlay.cpp/.h    Layered click-through border-overlay window
 src\winevents.cpp/.h  SetWinEventHook dispatch (move, destroy, minimize, fg)
-src\tray.cpp/.h       Tray icon + dynamic context menu
+src\tray.cpp/.h       Tray icon, context menu, Settings dialog
+src\settings.h        Autostart + hotkey registry helpers
 src\vdesk.cpp/.h      IVirtualDesktopManager wrapper
 src\winpin.h          Shared constants / common include
 src\version.h         Version + release URL (single source of truth)
