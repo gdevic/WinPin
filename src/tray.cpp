@@ -193,7 +193,9 @@ BOOL tray_init(HWND owner, HINSTANCE hInst)
     nid.cbSize           = sizeof nid;
     nid.hWnd             = owner;
     nid.uID              = TRAY_UID;
-    nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    /* NIF_SHOWTIP is required alongside NIF_TIP once NOTIFYICON_VERSION_4 is
+       set below; otherwise the shell suppresses the standard hover tooltip. */
+    nid.uFlags           = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP;
     nid.uCallbackMessage = WM_APP_TRAY;
     nid.hIcon            = hIcon;
     build_tip(nid.szTip, sizeof nid.szTip / sizeof nid.szTip[0]);
@@ -212,7 +214,7 @@ void tray_update_tip(void)
     nid.cbSize = sizeof nid;
     nid.hWnd   = g_owner;
     nid.uID    = TRAY_UID;
-    nid.uFlags = NIF_TIP;
+    nid.uFlags = NIF_TIP | NIF_SHOWTIP;
     build_tip(nid.szTip, sizeof nid.szTip / sizeof nid.szTip[0]);
     Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
