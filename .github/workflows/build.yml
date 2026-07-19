@@ -31,10 +31,32 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # We push straight to main (no PRs), so GitHub's PR-based
+      # generate_release_notes has nothing to summarize. Build the
+      # changelog from commits since the previous tag instead.
+      - name: Build changelog
+        run: |
+          PREV=$(git tag --sort=-creatordate | grep -v "^${GITHUB_REF_NAME}$" | head -n1)
+          {
+            echo "## Changes"
+            if [ -n "$PREV" ]; then
+              git log "${PREV}..${GITHUB_REF_NAME}" --no-merges --pretty=format:'- %s (%h)'
+              echo
+              echo
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV}...${GITHUB_REF_NAME}"
+            else
+              git log "${GITHUB_REF_NAME}" --no-merges --pretty=format:'- %s (%h)'
+            fi
+          } > release_notes.md
+
       - uses: actions/download-artifact@v4
         with:
           name: WinPin
       - uses: softprops/action-gh-release@v2
         with:
           files: WinPin.exe
-          generate_release_notes: true
+          body_path: release_notes.md
